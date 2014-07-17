@@ -6,12 +6,12 @@ def loadintointersect(bed_file):
         query_list = {}
         feature_list = Bed(bed_file)
         for feature in feature_list:
+            if float(feature['accn']) < .4: continue
             if feature['seqid'] not in list(query_list):
                 query_list[feature['seqid']] = Intersecter()
             query_list[feature['seqid']].add_interval(Feature(int(feature['start']),
-            int(feature['end']),name=['name']))
+            int(feature['end']),name=feature['strand']))
         return query_list
-
 
 def main(features_bed, results_bed, interval,padding):
     header = "start\tfreq\tchr\tType"
@@ -55,8 +55,10 @@ def genespace(results_bed,genelistbed,window_size,mtype):
             TSS_end = region + window_size + TSS
             TE_start = region + TE
             TE_end = region + window_size + TE
-            TSS_freq = len(query_list[gene['seqid']].find(TSS_start, TSS_end))
-            TE_freq = len(query_list[gene['seqid']].find(TE_start, TE_end))
+            tss_matches = query_list[gene['seqid']].find(TSS_start, TSS_end)
+            TSS_freq = len(list(tssm.name for tssm in tss_matches if tssm.name == gene['strand']))
+            TE_matches = query_list[gene['seqid']].find(TE_start, TE_end)
+            TE_freq = len(list(tem.name for tem in TE_matches if tem.name == gene['strand']))
             TSS_sites[str(region)].append(TSS_freq)
             TE_sites[str(region)].append(TE_freq)
     maketable(TSS_sites,"{0}_TSS_sites.txt".format(results_bed),mtype,"TSS")
@@ -80,6 +82,6 @@ if __name__ == "__main__":
     parser.add_option("--ref", dest="ref", help="ref genome bed (sorg_v2)")
     parser.add_option("--window", dest="window", help="window for grouping values")
     parser.add_option("--mtype", dest="mtype", help="methylation type")
-    (options, _) = parser.parse_args() 
-    
+    (options, _) = parser.parse_args()
+
     genespace(options.file, options.ref, int(options.window), options.mtype)
